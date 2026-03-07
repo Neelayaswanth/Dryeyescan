@@ -117,41 +117,48 @@ def main():
             print(f"Error creating table: {e}")
 
         
-        st.markdown(
-            """
-            <style>
-            /* Custom styles handled in bg injection */
-            </style>
-            """,
-            unsafe_allow_html=True
-        )
+def show_login(conn):
+    st.markdown(
+        """
+        <style>
+        /* Custom styles handled in bg injection */
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
 
-        col_space1, col_main, col_space2 = st.columns([1, 1.5, 1])
+    col_space1, col_main, col_space2 = st.columns([1, 1.5, 1])
 
-        with col_main:
-            st.write("") # spacer
+    with col_main:
+        st.write("") # spacer
 
-            name = st.text_input("👤 Username", placeholder="Enter your registered name")
-            password = st.text_input("🔒 Password", type="password", placeholder="Enter your password")
+        name = st.text_input("👤 Username", placeholder="Enter your registered name")
+        password = st.text_input("🔒 Password", type="password", placeholder="Enter your password")
 
-            st.write("") # spacer
+        st.write("") # spacer
 
-            login_btn = st.button("LOGIN", use_container_width=True)
-            if login_btn:
-                is_valid, user_name = validate_user(conn, name, password)
-                if is_valid:
-                    st.success(f"Welcome back, {user_name}! Login successful!")
-                    import subprocess
-                    subprocess.run(['python','-m','streamlit','run','Prediction.py'])
-                else:
-                    st.error("Invalid user name or password!")
-
-        conn.close()
-    else:
-        st.error("Error! cannot create the database connection.")
+        login_btn = st.button("LOGIN", use_container_width=True)
+        if login_btn:
+            is_valid, user_name = validate_user(conn, name, password)
+            if is_valid:
+                st.success(f"Welcome back, {user_name}! Login successful!")
+                st.session_state.logged_in = True
+                st.session_state.user_name = user_name
+                st.session_state.page = "Home"
+                st.rerun()
+            else:
+                st.error("Invalid user name or password!")
+        
+        if st.button("NEED AN ACCOUNT? REGISTER", use_container_width=True):
+            st.session_state.page = "Register"
+            st.rerun()
 
 if __name__ == '__main__':
-    main()
+    add_custom_bg()
+    conn = create_connection()
+    if conn:
+        show_login(conn)
+        conn.close()
     
         
         
