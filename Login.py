@@ -126,15 +126,6 @@ def main():
 
         
 def show_login(conn):
-    st.markdown(
-        """
-        <style>
-        /* Custom styles handled in bg injection */
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
-
     col_space1, col_main, col_space2 = st.columns([1, 1.5, 1])
 
     with col_main:
@@ -147,15 +138,18 @@ def show_login(conn):
 
         login_btn = st.button("LOGIN", use_container_width=True)
         if login_btn:
-            is_valid, user_name = validate_user(conn, name, password)
-            if is_valid:
-                st.success(f"Welcome back, {user_name}! Login successful!")
-                st.session_state.logged_in = True
-                st.session_state.user_name = user_name
-                st.session_state.page = "Home"
-                st.rerun()
+            if not conn:
+                st.error("⚠️ Database not connected. Please configure secrets and try again.")
             else:
-                st.error("Invalid user name or password!")
+                is_valid, user_name = validate_user(conn, name, password)
+                if is_valid:
+                    st.success(f"Welcome back, {user_name}! Login successful!")
+                    st.session_state.logged_in = True
+                    st.session_state.user_name = user_name
+                    st.session_state.page = "Home"
+                    st.rerun()
+                else:
+                    st.error("Invalid user name or password!")
         
         if st.button("NEED AN ACCOUNT? REGISTER", use_container_width=True):
             st.session_state.page = "Register"
