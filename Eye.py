@@ -146,8 +146,8 @@ def main():
         show_login(conn)
     elif st.session_state.page == "Home":
         if st.session_state.logged_in:
-            import runpy
-            runpy.run_path('Prediction.py', init_globals={'__name__': 'prediction_runner'})
+            from Prediction import show_prediction
+            show_prediction()
         else:
             st.session_state.page = "Login"
             st.rerun()
