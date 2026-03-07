@@ -62,16 +62,24 @@ add_custom_bg()
 # Function to create a database connection
 def create_connection():
     conn = None
+    # Safe secrets check
+    secrets = {}
     try:
-        conn = psycopg2.connect(
-            host=st.secrets["db_host"],
-            database=st.secrets["db_name"],
-            user=st.secrets["db_user"],
-            password=st.secrets["db_password"],
-            port=st.secrets["db_port"]
-        )
-    except psycopg2.Error as e:
-        print(f"Error connecting to Supabase: {e}")
+        secrets = st.secrets
+    except:
+        pass
+        
+    if "db_host" in secrets:
+        try:
+            conn = psycopg2.connect(
+                host=secrets["db_host"],
+                database=secrets["db_name"],
+                user=secrets["db_user"],
+                password=secrets["db_password"],
+                port=secrets["db_port"]
+            )
+        except psycopg2.Error as e:
+            print(f"Error connecting to Supabase: {e}")
     return conn
 
 # Function to create a new user (unused in Login.py, but kept for parity)
