@@ -20,9 +20,6 @@ import matplotlib.image as mpimg
 
 
 
-st.markdown(f'<h1 style="color:#ffffff;text-align: center;font-size:40px;font-weight:bold;text-shadow: 2px 2px 8px rgba(0,0,0,0.8);">{"Dry Eye Scan"}</h1>', unsafe_allow_html=True)
-
-
 def add_custom_bg():
     st.markdown(
     """
@@ -78,7 +75,7 @@ def add_custom_bg():
     """,
     unsafe_allow_html=True
     )
-add_custom_bg()
+
 
 
 # -------------------------------------------------------------------
