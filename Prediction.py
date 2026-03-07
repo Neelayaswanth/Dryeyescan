@@ -1147,7 +1147,22 @@ if selected == 'Eye Blink Detection':
                     
                 
                 
+                
+                
+                
+                
+                
+                
+                
+                
+                
 
-# Compatibility shim so Eye.py can import this function
+
 def show_prediction():
-    pass
+    """Called by Eye.py when user is on the Home page.
+    Uses runpy to re-execute this file's rendering logic."""
+    import runpy
+    import os
+    _dir = os.path.dirname(os.path.abspath(__file__))
+    runpy.run_path(os.path.join(_dir, 'Prediction.py'),
+                   init_globals={'__name__': 'prediction_runner'})
