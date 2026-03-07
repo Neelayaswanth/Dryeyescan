@@ -56,23 +56,28 @@ def add_custom_bg():
 
 add_custom_bg()
 
+# Function to safely get secrets
+def get_secrets():
+    try:
+        return st.secrets
+    except:
+        return {}
+
 # Function to create a database connection
 def create_connection():
     conn = None
-    try:
-        if "db_host" in st.secrets:
+    secrets = get_secrets()
+    if "db_host" in secrets:
+        try:
             conn = psycopg2.connect(
-                host=st.secrets["db_host"],
-                database=st.secrets["db_name"],
-                user=st.secrets["db_user"],
-                password=st.secrets["db_password"],
-                port=st.secrets["db_port"]
+                host=secrets["db_host"],
+                database=secrets["db_name"],
+                user=secrets["db_user"],
+                password=secrets["db_password"],
+                port=secrets["db_port"]
             )
-        else:
-            # Fallback/Local Warning
-            pass
-    except psycopg2.Error as e:
-        st.error(f"Error connecting to database: {e}")
+        except psycopg2.Error as e:
+            st.error(f"Error connecting to database: {e}")
     return conn
 
 # Function to create a new user
@@ -95,7 +100,7 @@ def user_exists(conn, email):
 
 # Function to validate email
 def validate_email(email):
-    pattern = r'^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$'
+    pattern = r'^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\dots{2,3})+$'
     return re.match(pattern, email)
 
 # Function to validate phone number
@@ -112,7 +117,8 @@ def main():
         st.session_state.logged_in = False
 
     # Check for secrets before proceeding (Safety check for cloud)
-    if "db_host" not in st.secrets:
+    secrets = get_secrets()
+    if "db_host" not in secrets:
         st.warning("⚠️ Database configuration (Secrets) missing. Please add secrets in Streamlit Cloud settings.")
 
     conn = create_connection()
