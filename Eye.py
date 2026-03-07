@@ -1,9 +1,12 @@
 #======================== IMPORT PACKAGES ===========================
 
-import streamlit as st
 import base64
-import psycopg2
+import os
 import re
+import socket
+
+import psycopg2
+import streamlit as st
 
 # Set page configuration
 st.set_page_config(page_title="Dry Eye Scan", layout="wide")
@@ -75,10 +78,24 @@ def create_connection():
                 database=secrets["db_name"],
                 user=secrets["db_user"],
                 password=secrets["db_password"],
-                port=secrets["db_port"]
+                port=secrets["db_port"],
+                connect_timeout=5
             )
         except psycopg2.Error as e:
-            st.error(f"Error connecting to database: {e}")
+            try:
+                host = secrets["db_host"]
+                hostaddr = secrets.get("db_hostaddr") or socket.gethostbyname(host)
+                conn = psycopg2.connect(
+                    host=host,
+                    hostaddr=hostaddr,
+                    database=secrets["db_name"],
+                    user=secrets["db_user"],
+                    password=secrets["db_password"],
+                    port=secrets["db_port"],
+                    connect_timeout=5
+                )
+            except Exception:
+                st.warning("Database is unavailable. Authentication features are disabled until connection is restored.")
     return conn
 
 # Function to create a new user
@@ -147,7 +164,8 @@ def main():
     elif st.session_state.page == "Home":
         if st.session_state.logged_in:
             import runpy
-            runpy.run_path('Prediction.py', init_globals={'__name__': 'prediction_runner'})
+            prediction_path = os.path.join(os.path.dirname(__file__), "Prediction.py")
+            runpy.run_path(prediction_path, init_globals={'__name__': 'prediction_runner'})
         else:
             st.session_state.page = "Login"
             st.rerun()

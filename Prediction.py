@@ -7,6 +7,7 @@ from tensorflow.keras.models import Sequential
 import matplotlib.image as mpimg
 import cv2
 import streamlit as st
+import os
 
 import base64
 from streamlit_option_menu import option_menu
@@ -513,18 +514,6 @@ if selected == 'Eye Disease Prediction':
     
 
 
-if selected == "Dry Eye Prediction":
-    import pandas as pd
-    import numpy as np
-    import time
-    from sklearn.model_selection import train_test_split
-    from sklearn import preprocessing
-    from sklearn.neural_network import MLPClassifier
-    from sklearn import metrics
-    
-    st.markdown(f'<h1 style="color:#00C9FF;text-align: center;font-size:32px;text-shadow: 2px 2px 5px rgba(0,0,0,0.5);">{"Interactive Dry Eye Scan"}</h1>', unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: #ccc; margin-bottom: 30px;'>Please answer the following questionnaire to immediately assess your Dry Eye Risk.</p>", unsafe_allow_html=True)
-    
 @st.cache_resource
 def train_mlp_model():
     import pandas as pd
@@ -532,7 +521,8 @@ def train_mlp_model():
     from sklearn import preprocessing
     from sklearn.neural_network import MLPClassifier
 
-    dataframe = pd.read_excel("Dataset.xlsx")
+    dataset_path = os.path.join(os.path.dirname(__file__), "Dataset.xlsx")
+    dataframe = pd.read_excel(dataset_path)
     dataframe = dataframe.fillna(0)
     dataframe = dataframe.drop(['Timestamp', 'Consent', 'Academic Year'], axis=1)
 
@@ -559,12 +549,23 @@ def train_mlp_model():
     mlpp.fit(X_train, y_train)
     return mlpp, encoders
 
+if selected == "Dry Eye Prediction":
+    import pandas as pd
+    import numpy as np
+    import time
+    from sklearn.model_selection import train_test_split
+    from sklearn import preprocessing
+    from sklearn.neural_network import MLPClassifier
+    from sklearn import metrics
+
+    st.markdown(f'<h1 style="color:#00C9FF;text-align: center;font-size:32px;text-shadow: 2px 2px 5px rgba(0,0,0,0.5);">{"Interactive Dry Eye Scan"}</h1>', unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #ccc; margin-bottom: 30px;'>Please answer the following questionnaire to immediately assess your Dry Eye Risk.</p>", unsafe_allow_html=True)
+
     # --- 1. Background Model Training (cached for speed) ---
     with st.spinner("Initializing Prediction Engine..."):
         mlpp, encoders = train_mlp_model()
 
     # --- 2. Interactive UI Questionnaire ---
-    
     with st.form("dry_eye_questionnaire"):
         st.markdown(f'<h3 style="color:#92FE9D;">Basic Information</h3>', unsafe_allow_html=True)
         col1, col2 = st.columns(2)
@@ -572,31 +573,30 @@ def train_mlp_model():
             q_age = st.number_input("Age", min_value=10, max_value=100, value=20)
         with col2:
             q_gender = st.selectbox("Gender", ["Female", "Male"])
-            
+
         st.markdown(f'<h3 style="color:#92FE9D; margin-top:20px;">Screen Exposure</h3>', unsafe_allow_html=True)
         q_device = st.selectbox("What type of Digital display device do you use?", [
-            'Smartphone, Tablet, Television', 'Smartphone', 'Smartphone, Laptop', 
-            'Smartphone, Television', 'Smartphone, Laptop, Tablet, Television', 
-            'Others', 'Laptop', 'Laptop, Television', 'Smartphone, Tablet', 
+            'Smartphone, Tablet, Television', 'Smartphone', 'Smartphone, Laptop',
+            'Smartphone, Television', 'Smartphone, Laptop, Tablet, Television',
+            'Others', 'Laptop', 'Laptop, Television', 'Smartphone, Tablet',
             'Smartphone, Laptop, Computer, Tablet, Television', 'Smartphone, Laptop, Television'
         ])
         q_hours = st.selectbox("How many hours in a day do you spend on screens?", [
             '3-5', '5-8', '>8', '1-3', '<1'
         ])
-        
+
         st.markdown(f'<h3 style="color:#92FE9D; margin-top:20px;">Symptom History (Frequency)</h3>', unsafe_allow_html=True)
-        # Create a helper for frequency options
         freq_options = ['None of the time', 'some times', 'half of the times', 'most of the times', 'all the time']
-        
+
         q_sensitive = st.selectbox("Eyes that are sensitive to light?", freq_options)
         q_gritty = st.selectbox("Eyes that feel gritty (itchy and Scratchy) ?", freq_options)
         q_painful = st.selectbox("Painful or Sore eyes?", freq_options)
         q_blurred = st.selectbox("Blurred vision?", freq_options)
         q_poorvision = st.selectbox("Poor Vision?", freq_options)
         q_osdi = st.number_input("OSDI Score (if known, else 0)", min_value=0.0, max_value=100.0, value=0.0)
-        
+
         st.markdown(f'<h3 style="color:#92FE9D; margin-top:20px;">Environmental Triggers (Frequency)</h3>', unsafe_allow_html=True)
-        
+
         col1, col2 = st.columns(2)
         with col1:
             q_reading = st.selectbox("Reading?", freq_options)
@@ -605,22 +605,22 @@ def train_mlp_model():
         with col2:
             q_tv = st.selectbox("Watching TV?", freq_options)
             q_windy = st.selectbox("Windy conditions?", freq_options)
-            
+
         q_humidity = st.selectbox("Places or areas with low humidity (very dry)?", freq_options)
         q_ac = st.selectbox("Areas that are air-conditioned?", freq_options)
-        
+
         st.write("")
         submit_btn = st.form_submit_button("Predict Dry Eye Risk", use_container_width=True)
-        
+
     # --- 3. Live Prediction Engine ---
     if submit_btn:
         st.write("-----------------------------------------------------------")
         st.markdown(f'<h1 style="color:#00C9FF;text-align: center;font-size:26px;text-shadow: 1px 1px 3px rgba(0,0,0,0.5);">{"Your Custom Prediction"}</h1>', unsafe_allow_html=True)
-        
+
         # Build the exact array shape the MLP expects
         # 16 features, in exact order of original CSV columns:
         # Age, Gender, Academic Year, Device, Hours, Sensitive, Gritty, Painful, Blurred, Reading, Driving, Computer, TV, Windy, Humidity, AC, PoorVision
-        
+
         try:
             # We must use the trained encoders to transform the user's string inputs into the exact integers the model learned.
             def safe_encode(col_name, val):
@@ -629,8 +629,8 @@ def train_mlp_model():
                 if str(val) in le.classes_:
                     return le.transform([str(val)])[0]
                 else:
-                    return 0 # Safe default fallback for unrecognized choices
-                    
+                    return 0
+
             user_data = [
                 float(q_age),
                 safe_encode('Gender', q_gender),

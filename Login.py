@@ -3,6 +3,7 @@ import streamlit as st
 import base64
 import cv2
 import psycopg2
+import socket
 
 # ================ Background image ===
 
@@ -76,10 +77,24 @@ def create_connection():
                 database=secrets["db_name"],
                 user=secrets["db_user"],
                 password=secrets["db_password"],
-                port=secrets["db_port"]
+                port=secrets["db_port"],
+                connect_timeout=5
             )
         except psycopg2.Error as e:
-            print(f"Error connecting to Supabase: {e}")
+            try:
+                host = secrets["db_host"]
+                hostaddr = secrets.get("db_hostaddr") or socket.gethostbyname(host)
+                conn = psycopg2.connect(
+                    host=host,
+                    hostaddr=hostaddr,
+                    database=secrets["db_name"],
+                    user=secrets["db_user"],
+                    password=secrets["db_password"],
+                    port=secrets["db_port"],
+                    connect_timeout=5
+                )
+            except Exception:
+                pass
     return conn
 
 # Function to create a new user (unused in Login.py, but kept for parity)
