@@ -528,41 +528,43 @@ if selected == "Dry Eye Prediction":
     st.markdown(f'<h1 style="color:#00C9FF;text-align: center;font-size:32px;text-shadow: 2px 2px 5px rgba(0,0,0,0.5);">{"Interactive Dry Eye Scan"}</h1>', unsafe_allow_html=True)
     st.markdown("<p style='text-align: center; color: #ccc; margin-bottom: 30px;'>Please answer the following questionnaire to immediately assess your Dry Eye Risk.</p>", unsafe_allow_html=True)
     
-    # --- 1. Background Model Training ---
+@st.cache_resource
+def train_mlp_model():
+    import pandas as pd
+    from sklearn.model_selection import train_test_split
+    from sklearn import preprocessing
+    from sklearn.neural_network import MLPClassifier
+
+    dataframe = pd.read_excel("Dataset.xlsx")
+    dataframe = dataframe.fillna(0)
+    dataframe = dataframe.drop(['Timestamp', 'Consent', 'Academic Year'], axis=1)
+
+    encoders = {}
+    categorical_cols = [
+        'Gender', 'What type of Digital display device do you use?',
+        'How many hours in a day do you spend on your smartphones, laptops, etc?',
+        'Eyes that are sensitive to light?', 'Eyes that feel gritty (itchy and Scratchy) ?',
+        'Painful or Sore eyes?', 'Blurred vision?', 'Reading?', 'Driving at night?',
+        'Working with a computer or bank machine ATM?', 'Watching TV?',
+        'Windy conditions?', 'Places or areas with low humidity (very dry)?',
+        'Areas that are air-conditioned?', 'Poor Vision?', 'Results'
+    ]
+    for col in categorical_cols:
+        if col in dataframe.columns:
+            le = preprocessing.LabelEncoder()
+            dataframe[col] = le.fit_transform(dataframe[col].astype(str))
+            encoders[col] = le
+
+    X = dataframe.drop('Results', axis=1)
+    y = dataframe['Results']
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=0)
+    mlpp = MLPClassifier()
+    mlpp.fit(X_train, y_train)
+    return mlpp, encoders
+
+    # --- 1. Background Model Training (cached for speed) ---
     with st.spinner("Initializing Prediction Engine..."):
-        # Load the base dataset silently behind the scenes to train the MLP
-        dataframe = pd.read_excel("Dataset.xlsx")
-        
-        # Clean data locally
-        dataframe = dataframe.fillna(0)
-        dataframe = dataframe.drop(['Timestamp', 'Consent', 'Academic Year'], axis=1)
-        
-        # We need a dictionary of our LabelEncoders to reuse them for the user's live input!
-        encoders = {}
-        categorical_cols = [
-            'Gender', 'What type of Digital display device do you use?',
-            'How many hours in a day do you spend on your smartphones, laptops, etc?',
-            'Eyes that are sensitive to light?', 'Eyes that feel gritty (itchy and Scratchy) ?',
-            'Painful or Sore eyes?', 'Blurred vision?', 'Reading?', 'Driving at night?',
-            'Working with a computer or bank machine ATM?', 'Watching TV?', 
-            'Windy conditions?', 'Places or areas with low humidity (very dry)?',
-            'Areas that are air-conditioned?', 'Poor Vision?', 'Results'
-        ]
-        
-        for col in categorical_cols:
-            if col in dataframe.columns:
-                le = preprocessing.LabelEncoder()
-                # Ensure it's string type for fitting just in case
-                dataframe[col] = le.fit_transform(dataframe[col].astype(str))
-                encoders[col] = le
-            
-        X = dataframe.drop('Results', axis=1)
-        y = dataframe['Results']
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=0)
-        
-        # Train MLP
-        mlpp = MLPClassifier()
-        mlpp.fit(X_train, y_train)
+        mlpp, encoders = train_mlp_model()
 
     # --- 2. Interactive UI Questionnaire ---
     

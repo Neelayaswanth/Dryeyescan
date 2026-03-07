@@ -101,12 +101,12 @@ def user_exists(conn, email):
 
 # Function to validate email
 def validate_email(email):
-    pattern = r'^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\dots{2,3})+$'
+    pattern = r'^[\w\.-]+@[\w\.-]+\.\w{2,}$'
     return re.match(pattern, email)
 
 # Function to validate phone number
 def validate_phone(phone):
-    pattern = r'^[6-9]\d{9}$'
+    pattern = r'^\d{10}$'  # Accept any 10-digit number
     return re.match(pattern, phone)
 
 # Main function
