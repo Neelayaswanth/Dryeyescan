@@ -1,0 +1,11 @@
+streamlit
+streamlit-option-menu
+numpy
+pandas
+pillow
+opencv-python-headless
+matplotlib
+scikit-learn
+tensorflow
+psycopg2-binary
+openpyxl
