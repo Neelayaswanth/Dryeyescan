@@ -12,7 +12,13 @@ d2.py
 d3.py
 a.py
 .DS_Store
-*.jfif
-*.jpg
-*.png
-!eye_disease_bg_attempt_3.jpg
+
+# Ignore loose images in the root directory only
+/*.jfif
+/*.jpg
+/*.png
+!/eye_disease_bg_attempt_3.jpg
+
+# Ensure data folders are tracked
+!Dataset/
+!Blink/
