@@ -65,7 +65,7 @@ def create_connection():
     # Safe secrets check
     secrets = {}
     try:
-        secrets = st.secrets
+        secrets = dict(st.secrets)  # Force parse inside try block
     except:
         pass
         

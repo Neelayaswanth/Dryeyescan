@@ -56,10 +56,11 @@ def add_custom_bg():
 
 add_custom_bg()
 
-# Function to safely get secrets
+# Function to safely get secrets as a plain dict
 def get_secrets():
     try:
-        return st.secrets
+        # Force the parse to happen inside the try block
+        return dict(st.secrets)
     except:
         return {}
 
