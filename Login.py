@@ -64,11 +64,11 @@ def create_connection():
     conn = None
     try:
         conn = psycopg2.connect(
-            host="db.sebkxixuxpydifogmttc.supabase.co",
-            database="postgres",
-            user="postgres",
-            password="Yash00435210@",
-            port="5432"
+            host=st.secrets["db_host"],
+            database=st.secrets["db_name"],
+            user=st.secrets["db_user"],
+            password=st.secrets["db_password"],
+            port=st.secrets["db_port"]
         )
     except psycopg2.Error as e:
         print(f"Error connecting to Supabase: {e}")
