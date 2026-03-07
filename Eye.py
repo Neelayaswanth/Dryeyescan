@@ -130,9 +130,9 @@ def validate_phone(phone):
 def main():
     # Initialize session state for navigation
     if 'page' not in st.session_state:
-        st.session_state.page = "Register"
+        st.session_state.page = "Home"
     if 'logged_in' not in st.session_state:
-        st.session_state.logged_in = False
+        st.session_state.logged_in = True
 
     # Check for secrets before proceeding (Safety check for cloud)
     secrets = get_secrets()
@@ -155,20 +155,11 @@ def main():
         except:
             pass
 
-    # Page Routing
-    if st.session_state.page == "Register":
-        show_registration(conn)
-    elif st.session_state.page == "Login":
-        from Login import show_login
-        show_login(conn)
-    elif st.session_state.page == "Home":
-        if st.session_state.logged_in:
-            import runpy
-            prediction_path = os.path.join(os.path.dirname(__file__), "Prediction.py")
-            runpy.run_path(prediction_path, init_globals={'__name__': 'prediction_runner'})
-        else:
-            st.session_state.page = "Login"
-            st.rerun()
+    # Page Routing (login/register disabled)
+    if st.session_state.page == "Home":
+        import runpy
+        prediction_path = os.path.join(os.path.dirname(__file__), "Prediction.py")
+        runpy.run_path(prediction_path, init_globals={'__name__': 'prediction_runner'})
 
     if conn:
         conn.close()
