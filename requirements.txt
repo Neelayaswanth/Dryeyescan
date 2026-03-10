@@ -9,3 +9,4 @@ scikit-learn
 tensorflow
 psycopg2-binary
 openpyxl
+scikit-image

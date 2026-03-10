@@ -7,6 +7,7 @@ from tensorflow.keras.models import Sequential
 import matplotlib.image as mpimg
 import cv2
 import streamlit as st
+import streamlit.components.v1 as components
 import os
 
 import base64
@@ -83,10 +84,10 @@ def add_custom_bg():
 
 selected = option_menu(
     menu_title=None, 
-    options=["Dry Eye Prediction", "Eye Disease Prediction", "Eye Blink Detection"],  
+    options=["Dry Eye Prediction", "Eye Disease Prediction", "Eye Blink Detection", "Project Chat Assistant"],  
     orientation="horizontal",
     styles={
-        "container": {"padding": "5px!important", "background-color": "rgba(255,255,255,0.05)", "border-radius": "10px", "border": "1px solid rgba(255,255,255,0.1)", "margin-bottom": "20px", "display": "grid", "grid-template-columns": "repeat(3, 1fr)", "gap": "5px"},
+        "container": {"padding": "5px!important", "background-color": "rgba(255,255,255,0.05)", "border-radius": "10px", "border": "1px solid rgba(255,255,255,0.1)", "margin-bottom": "20px", "display": "grid", "grid-template-columns": "repeat(4, 1fr)", "gap": "5px"},
         "icon": {"color": "#00C9FF", "font-size": "18px"}, 
         "nav-link": {"font-size": "16px", "text-align": "center", "margin": "0", "--hover-color": "rgba(255,255,255,0.1)", "color": "#e0e0e0", "transition": "0.3s", "white-space": "nowrap", "width": "100%", "padding": "10px 0"},
         "nav-link-selected": {"background": "linear-gradient(90deg, #00C9FF 0%, #92FE9D 100%)", "color": "#111", "font-weight": "bold", "box-shadow": "0 4px 15px rgba(0, 201, 255, 0.4)", "white-space": "nowrap", "width": "100%", "padding": "10px 0"},
@@ -293,10 +294,21 @@ if selected == 'Eye Disease Prediction':
         import os 
         
         from sklearn.model_selection import train_test_split
-          
-        data_aff = os.listdir('Dataset/Affected/')
-         
-        data_not = os.listdir('Dataset/Not/')
+
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        aff_dir = os.path.join(base_dir, "Dataset", "Affected")
+        not_dir = os.path.join(base_dir, "Dataset", "Not")
+
+        if not os.path.isdir(aff_dir) or not os.path.isdir(not_dir):
+            st.error(
+                "Dataset folders for Eye Disease Prediction were not found.\n\n"
+                f"Expected directories:\n- {aff_dir}\n- {not_dir}\n\n"
+                "Please make sure the `Dataset/Affected` and `Dataset/Not` folders "
+                "exist next to `Prediction.py`."
+            )
+        else:
+            data_aff = os.listdir(aff_dir)
+            data_not = os.listdir(not_dir)
          
         
 
@@ -306,56 +318,56 @@ if selected == 'Eye Disease Prediction':
         labels1 = [] 
         # Filter out non-image files like .DS_Store
         image_extensions = ('.jpg', '.jpeg', '.png', '.bmp', '.gif', '.tiff', '.tif')
-        data_aff = [f for f in data_aff if f.lower().endswith(image_extensions)]
-        for img11 in data_aff:
-            # print(img)
-            try:
-                img_1 = mpimg.imread('Dataset/Affected//' + "/" + img11)
-                img_1 = cv2.resize(img_1,((50, 50)))
-                
-                try:            
-                    gray = cv2.cvtColor(img_1, cv2.COLOR_BGR2GRAY)
-                except:
-                    gray = img_1
-            
-                dot1.append(np.array(gray))
-                labels1.append(1)
-            except Exception as e:
-                print(f"Skipping file {img11}: {e}")
-                continue
-         
-        # Filter out non-image files like .DS_Store
-        data_not = [f for f in data_not if f.lower().endswith(image_extensions)]
-        for img11 in data_not:
-            # print(img)
-            try:
-                img_1 = mpimg.imread('Dataset/Not//' + "/" + img11)
-                img_1 = cv2.resize(img_1,((50, 50)))
-                
-                try:            
-                    gray = cv2.cvtColor(img_1, cv2.COLOR_BGR2GRAY)
-                except:
-                    gray = img_1
-            
-                dot1.append(np.array(gray))
-                labels1.append(2)
-            except Exception as e:
-                print(f"Skipping file {img11}: {e}")
-                continue
-         
-   
 
-        x_train, x_test, y_train, y_test = train_test_split(dot1,labels1,test_size = 0.2, random_state = 101)
-        
-        
-        print("------------------------------------------------------------")
-        print(" Image Splitting")
-        print("------------------------------------------------------------")
-        print()
-        
-        st.write("The Total of Images       =",len(dot1))
-        st.write("The Total of Train Images =",len(x_train))
-        st.write("The Total of Test Images  =",len(x_test))
+        if os.path.isdir(aff_dir) and os.path.isdir(not_dir):
+            data_aff = [f for f in data_aff if f.lower().endswith(image_extensions)]
+            for img11 in data_aff:
+                try:
+                    img_path = os.path.join(aff_dir, img11)
+                    img_1 = mpimg.imread(img_path)
+                    img_1 = cv2.resize(img_1,((50, 50)))
+                    
+                    try:            
+                        gray = cv2.cvtColor(img_1, cv2.COLOR_BGR2GRAY)
+                    except:
+                        gray = img_1
+                
+                    dot1.append(np.array(gray))
+                    labels1.append(1)
+                except Exception as e:
+                    print(f"Skipping file {img11}: {e}")
+                    continue
+            
+            # Filter out non-image files like .DS_Store
+            data_not = [f for f in data_not if f.lower().endswith(image_extensions)]
+            for img11 in data_not:
+                try:
+                    img_path = os.path.join(not_dir, img11)
+                    img_1 = mpimg.imread(img_path)
+                    img_1 = cv2.resize(img_1,((50, 50)))
+                    
+                    try:            
+                        gray = cv2.cvtColor(img_1, cv2.COLOR_BGR2GRAY)
+                    except:
+                        gray = img_1
+                
+                    dot1.append(np.array(gray))
+                    labels1.append(2)
+                except Exception as e:
+                    print(f"Skipping file {img11}: {e}")
+                    continue
+            
+            x_train, x_test, y_train, y_test = train_test_split(dot1,labels1,test_size = 0.2, random_state = 101)
+            
+            
+            print("------------------------------------------------------------")
+            print(" Image Splitting")
+            print("------------------------------------------------------------")
+            print()
+            
+            st.write("The Total of Images       =",len(dot1))
+            st.write("The Total of Train Images =",len(x_train))
+            st.write("The Total of Test Images  =",len(x_test))
           
           
               
@@ -520,11 +532,18 @@ def train_mlp_model():
     from sklearn.model_selection import train_test_split
     from sklearn import preprocessing
     from sklearn.neural_network import MLPClassifier
+    from sklearn import metrics
 
     dataset_path = os.path.join(os.path.dirname(__file__), "Dataset.xlsx")
     dataframe = pd.read_excel(dataset_path)
     dataframe = dataframe.fillna(0)
-    dataframe = dataframe.drop(['Timestamp', 'Consent', 'Academic Year'], axis=1)
+
+    dropped_columns = []
+    for col in ['Timestamp', 'Consent', 'Academic Year']:
+        if col in dataframe.columns:
+            dropped_columns.append(col)
+    if dropped_columns:
+        dataframe = dataframe.drop(dropped_columns, axis=1)
 
     encoders = {}
     categorical_cols = [
@@ -547,7 +566,21 @@ def train_mlp_model():
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=0)
     mlpp = MLPClassifier()
     mlpp.fit(X_train, y_train)
-    return mlpp, encoders
+    y_pred = mlpp.predict(X_test)
+    accuracy = metrics.accuracy_score(y_test, y_pred)
+
+    metadata = {
+        "n_samples": int(len(dataframe)),
+        "n_features": int(X.shape[1]),
+        "feature_names": list(X.columns),
+        "dropped_columns": dropped_columns,
+        "categorical_columns_used": list(encoders.keys()),
+        "train_size": int(len(X_train)),
+        "test_size": int(len(X_test)),
+        "test_accuracy": float(accuracy),
+    }
+
+    return mlpp, encoders, metadata
 
 if selected == "Dry Eye Prediction":
     import pandas as pd
@@ -556,14 +589,32 @@ if selected == "Dry Eye Prediction":
     from sklearn.model_selection import train_test_split
     from sklearn import preprocessing
     from sklearn.neural_network import MLPClassifier
-    from sklearn import metrics
 
     st.markdown(f'<h1 style="color:#00C9FF;text-align: center;font-size:32px;text-shadow: 2px 2px 5px rgba(0,0,0,0.5);">{"Interactive Dry Eye Scan"}</h1>', unsafe_allow_html=True)
     st.markdown("<p style='text-align: center; color: #ccc; margin-bottom: 30px;'>Please answer the following questionnaire to immediately assess your Dry Eye Risk.</p>", unsafe_allow_html=True)
 
     # --- 1. Background Model Training (cached for speed) ---
+    feature_order = [
+        "Age",
+        "Gender",
+        "What type of Digital display device do you use?",
+        "How many hours in a day do you spend on your smartphones, laptops, etc?",
+        "Eyes that are sensitive to light?",
+        "Eyes that feel gritty (itchy and Scratchy) ?",
+        "Painful or Sore eyes?",
+        "Blurred vision?",
+        "Poor Vision?",
+        "Reading?",
+        "Driving at night?",
+        "Working with a computer or bank machine ATM?",
+        "Watching TV?",
+        "Windy conditions?",
+        "Places or areas with low humidity (very dry)?",
+        "Areas that are air-conditioned?",
+        "OSDI Score",
+    ]
     with st.spinner("Initializing Prediction Engine..."):
-        mlpp, encoders = train_mlp_model()
+        mlpp, encoders, ml_metadata = train_mlp_model()
 
     # --- 2. Interactive UI Questionnaire ---
     with st.form("dry_eye_questionnaire"):
@@ -673,6 +724,74 @@ if selected == "Dry Eye Prediction":
                         f'<h2 style="color: {color}; margin:0; text-shadow: 1px 1px 5px rgba(0,0,0,0.8);">{result_text}</h2>'
                         f'<p style="color: #fff; margin-top: 10px;">Based on your responses, this is your estimated Dry Eye risk profile.</p>'
                         f'</div>', unsafe_allow_html=True)
+
+            # --- 4. Detailed preprocessing & model information ---
+            with st.expander("See detailed preprocessing, encoding, and model information"):
+                import pandas as pd
+
+                st.markdown("**1. Your answers and encoded feature vector**")
+                # Build a human-readable table of original vs encoded values
+                original_values = [
+                    q_age,
+                    q_gender,
+                    q_device,
+                    q_hours,
+                    q_sensitive,
+                    q_gritty,
+                    q_painful,
+                    q_blurred,
+                    q_poorvision,
+                    q_reading,
+                    q_driving,
+                    q_computer,
+                    q_tv,
+                    q_windy,
+                    q_humidity,
+                    q_ac,
+                    q_osdi,
+                ]
+
+                rows = []
+                for name, original, encoded in zip(feature_order, original_values, user_data):
+                    rows.append(
+                        {
+                            "Feature": name,
+                            "Original value": original,
+                            "Numeric / encoded value": encoded,
+                        }
+                    )
+                st.dataframe(pd.DataFrame(rows), use_container_width=True)
+
+                st.markdown("**2. Dataset preprocessing summary**")
+                st.write(f"- Total samples used to train the model: **{ml_metadata.get('n_samples', 'N/A')}**")
+                st.write(f"- Number of input features after cleaning: **{ml_metadata.get('n_features', 'N/A')}**")
+                st.write(f"- Train / test split: **{ml_metadata.get('train_size', 'N/A')}** train, **{ml_metadata.get('test_size', 'N/A')}** test")
+                dropped = ml_metadata.get("dropped_columns", [])
+                if dropped:
+                    st.write(f"- Dropped columns during preprocessing: `{dropped}`")
+                st.write(f"- Final feature columns passed to the MLP: `{ml_metadata.get('feature_names', [])}`")
+                st.write(f"- Categorical columns that were label-encoded: `{ml_metadata.get('categorical_columns_used', [])}`")
+                if "test_accuracy" in ml_metadata:
+                    st.write(f"- Held-out test accuracy of the MLP model: **{ml_metadata['test_accuracy'] * 100:.2f}%**")
+
+                st.markdown("**3. Model configuration (MLPClassifier)**")
+                params = mlpp.get_params()
+                key_params = {
+                    "hidden_layer_sizes": params.get("hidden_layer_sizes"),
+                    "activation": params.get("activation"),
+                    "solver": params.get("solver"),
+                    "alpha (L2 regularization)": params.get("alpha"),
+                    "max_iter": params.get("max_iter"),
+                    "learning_rate": params.get("learning_rate"),
+                }
+                st.json(key_params)
+
+                with st.expander("Advanced: full model parameters and encoder classes"):
+                    st.markdown("**Full MLPClassifier parameters**")
+                    st.json(params)
+                    st.markdown("**Label encoder classes per categorical column**")
+                    encoder_info = {col: list(enc.classes_) for col, enc in encoders.items()}
+                    st.json(encoder_info)
             
         except Exception as e:
             st.error(f"Prediction Error: Ensure all fields are valid. Technical details: {e}")
@@ -862,18 +981,38 @@ if selected == 'Eye Blink Detection':
         import os 
         
         from sklearn.model_selection import train_test_split
-          
-        data_clos = os.listdir('Blink/Closed/')
-         
-        data_forward = os.listdir('Blink/forward_look/')
-         
-        data_left= os.listdir('Blink/left_look/')
-         
-        data_open = os.listdir('Blink/Open/')
-         
-        data_partial = os.listdir('Blink/Partial/')
-         
-        data_right= os.listdir('Blink/right_look/')    
+
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        blink_closed_dir = os.path.join(base_dir, "Blink", "Closed")
+        blink_forward_dir = os.path.join(base_dir, "Blink", "forward_look")
+        blink_left_dir = os.path.join(base_dir, "Blink", "left_look")
+        blink_open_dir = os.path.join(base_dir, "Blink", "Open")
+        blink_partial_dir = os.path.join(base_dir, "Blink", "Partial")
+        blink_right_dir = os.path.join(base_dir, "Blink", "right_look")
+
+        required_dirs = [
+            ("Closed", blink_closed_dir),
+            ("forward_look", blink_forward_dir),
+            ("left_look", blink_left_dir),
+            ("Open", blink_open_dir),
+            ("Partial", blink_partial_dir),
+            ("right_look", blink_right_dir),
+        ]
+
+        missing = [name for name, path in required_dirs if not os.path.isdir(path)]
+        if missing:
+            st.error(
+                "Blink dataset folders for Eye Blink Detection were not found.\n\n"
+                "Missing categories: " + ", ".join(missing) + "\n\n"
+                "Please make sure the `Blink/...` folders exist next to `Prediction.py`."
+            )
+        else:
+            data_clos = os.listdir(blink_closed_dir)
+            data_forward = os.listdir(blink_forward_dir)
+            data_left = os.listdir(blink_left_dir)
+            data_open = os.listdir(blink_open_dir)
+            data_partial = os.listdir(blink_partial_dir)
+            data_right = os.listdir(blink_right_dir)
 
 
         
@@ -882,130 +1021,127 @@ if selected == 'Eye Blink Detection':
         labels1 = [] 
         # Filter out non-image files like .DS_Store
         image_extensions = ('.jpg', '.jpeg', '.png', '.bmp', '.gif', '.tiff', '.tif')
-        data_clos = [f for f in data_clos if f.lower().endswith(image_extensions)]
-        for img11 in data_clos:
-            # print(img)
-            try:
-                img_1 = mpimg.imread('Blink/Closed//' + "/" + img11)
-                img_1 = cv2.resize(img_1,((50, 50)))
-                
-                try:            
-                    gray = cv2.cvtColor(img_1, cv2.COLOR_BGR2GRAY)
-                except:
-                    gray = img_1
-            
-                dot1.append(np.array(gray))
-                labels1.append(1)
-            except Exception as e:
-                print(f"Skipping file {img11}: {e}")
-                continue
-         
-        # Filter out non-image files like .DS_Store
-        data_forward = [f for f in data_forward if f.lower().endswith(image_extensions)]
-        for img11 in data_forward:
-            # print(img)
-            try:
-                img_1 = mpimg.imread('Blink/forward_look//' + "/" + img11)
-                img_1 = cv2.resize(img_1,((50, 50)))
-                
-                try:            
-                    gray = cv2.cvtColor(img_1, cv2.COLOR_BGR2GRAY)
-                except:
-                    gray = img_1
-            
-                dot1.append(np.array(gray))
-                labels1.append(2)
-            except Exception as e:
-                print(f"Skipping file {img11}: {e}")
-                continue
-         
-        # Filter out non-image files like .DS_Store
-        data_left = [f for f in data_left if f.lower().endswith(image_extensions)]
-        for img11 in data_left:
-            # print(img)
-            try:
-                img_1 = mpimg.imread('Blink/left_look//' + "/" + img11)
-                img_1 = cv2.resize(img_1,((50, 50)))
-                
-                try:            
-                    gray = cv2.cvtColor(img_1, cv2.COLOR_BGR2GRAY)
-                except:
-                    gray = img_1
-            
-                dot1.append(np.array(gray))
-                labels1.append(3)
-            except Exception as e:
-                print(f"Skipping file {img11}: {e}")
-                continue
-         
-        # Filter out non-image files like .DS_Store
-        data_open = [f for f in data_open if f.lower().endswith(image_extensions)]
-        for img11 in data_open:
-            # print(img)
-            try:
-                img_1 = mpimg.imread('Blink/Open//' + "/" + img11)
-                img_1 = cv2.resize(img_1,((50, 50)))
-                
-                try:            
-                    gray = cv2.cvtColor(img_1, cv2.COLOR_BGR2GRAY)
-                except:
-                    gray = img_1
-            
-                dot1.append(np.array(gray))
-                labels1.append(4)
-            except Exception as e:
-                print(f"Skipping file {img11}: {e}")
-                continue
-         
-        # Filter out non-image files like .DS_Store
-        data_partial = [f for f in data_partial if f.lower().endswith(image_extensions)]
-        for img11 in data_partial:
-            # print(img)
-            try:
-                img_1 = mpimg.imread('Blink/Partial//' + "/" + img11)
-                img_1 = cv2.resize(img_1,((50, 50)))
-                
-                try:            
-                    gray = cv2.cvtColor(img_1, cv2.COLOR_BGR2GRAY)
-                except:
-                    gray = img_1
-            
-                dot1.append(np.array(gray))
-                labels1.append(5)
-            except Exception as e:
-                print(f"Skipping file {img11}: {e}")
-                continue
-         
-        # Filter out non-image files like .DS_Store
-        data_right = [f for f in data_right if f.lower().endswith(image_extensions)]
-        for img11 in data_right:
-            # print(img)
-            try:
-                img_1 = mpimg.imread('Blink/right_look//' + "/" + img11)
-                img_1 = cv2.resize(img_1,((50, 50)))
-                
-                try:            
-                    gray = cv2.cvtColor(img_1, cv2.COLOR_BGR2GRAY)
-                except:
-                    gray = img_1
-            
-                dot1.append(np.array(gray))
-                labels1.append(6)
-            except Exception as e:
-                print(f"Skipping file {img11}: {e}")
-                continue
 
-        x_train, x_test, y_train, y_test = train_test_split(dot1,labels1,test_size = 0.2, random_state = 101)
-        
-        
-        print("------------------------------------------------------------")
-        print(" Image Splitting")
-        print("------------------------------------------------------------")
-        print()
-        
-        st.write("The Total of Images       =",len(dot1))
-        st.write("The Total of Train Images =",len(x_train))
-        st.write("The Total of Test Images  =",len(x_test))
+        if not missing:
+            data_clos = [f for f in data_clos if f.lower().endswith(image_extensions)]
+            for img11 in data_clos:
+                try:
+                    img_path = os.path.join(blink_closed_dir, img11)
+                    img_1 = mpimg.imread(img_path)
+                    img_1 = cv2.resize(img_1,((50, 50)))
+                    
+                    try:            
+                        gray = cv2.cvtColor(img_1, cv2.COLOR_BGR2GRAY)
+                    except:
+                        gray = img_1
+                
+                    dot1.append(np.array(gray))
+                    labels1.append(1)
+                except Exception as e:
+                    print(f"Skipping file {img11}: {e}")
+                    continue
+            
+            data_forward = [f for f in data_forward if f.lower().endswith(image_extensions)]
+            for img11 in data_forward:
+                try:
+                    img_path = os.path.join(blink_forward_dir, img11)
+                    img_1 = mpimg.imread(img_path)
+                    img_1 = cv2.resize(img_1,((50, 50)))
+                    
+                    try:            
+                        gray = cv2.cvtColor(img_1, cv2.COLOR_BGR2GRAY)
+                    except:
+                        gray = img_1
+                
+                    dot1.append(np.array(gray))
+                    labels1.append(2)
+                except Exception as e:
+                    print(f"Skipping file {img11}: {e}")
+                    continue
+            
+            data_left = [f for f in data_left if f.lower().endswith(image_extensions)]
+            for img11 in data_left:
+                try:
+                    img_path = os.path.join(blink_left_dir, img11)
+                    img_1 = mpimg.imread(img_path)
+                    img_1 = cv2.resize(img_1,((50, 50)))
+                    
+                    try:            
+                        gray = cv2.cvtColor(img_1, cv2.COLOR_BGR2GRAY)
+                    except:
+                        gray = img_1
+                
+                    dot1.append(np.array(gray))
+                    labels1.append(3)
+                except Exception as e:
+                    print(f"Skipping file {img11}: {e}")
+                    continue
+            
+            data_open = [f for f in data_open if f.lower().endswith(image_extensions)]
+            for img11 in data_open:
+                try:
+                    img_path = os.path.join(blink_open_dir, img11)
+                    img_1 = mpimg.imread(img_path)
+                    img_1 = cv2.resize(img_1,((50, 50)))
+                    
+                    try:            
+                        gray = cv2.cvtColor(img_1, cv2.COLOR_BGR2GRAY)
+                    except:
+                        gray = img_1
+                
+                    dot1.append(np.array(gray))
+                    labels1.append(4)
+                except Exception as e:
+                    print(f"Skipping file {img11}: {e}")
+                    continue
+            
+            data_partial = [f for f in data_partial if f.lower().endswith(image_extensions)]
+            for img11 in data_partial:
+                try:
+                    img_path = os.path.join(blink_partial_dir, img11)
+                    img_1 = mpimg.imread(img_path)
+                    img_1 = cv2.resize(img_1,((50, 50)))
+                    
+                    try:            
+                        gray = cv2.cvtColor(img_1, cv2.COLOR_BGR2GRAY)
+                    except:
+                        gray = img_1
+                
+                    dot1.append(np.array(gray))
+                    labels1.append(5)
+                except Exception as e:
+                    print(f"Skipping file {img11}: {e}")
+                    continue
+            
+            data_right = [f for f in data_right if f.lower().endswith(image_extensions)]
+            for img11 in data_right:
+                try:
+                    img_path = os.path.join(blink_right_dir, img11)
+                    img_1 = mpimg.imread(img_path)
+                    img_1 = cv2.resize(img_1,((50, 50)))
+                    
+                    try:            
+                        gray = cv2.cvtColor(img_1, cv2.COLOR_BGR2GRAY)
+                    except:
+                        gray = img_1
+                
+                    dot1.append(np.array(gray))
+                    labels1.append(6)
+                except Exception as e:
+                    print(f"Skipping file {img11}: {e}")
+                    continue
+
+            x_train, x_test, y_train, y_test = train_test_split(dot1,labels1,test_size = 0.2, random_state = 101)
+            
+            
+            print("------------------------------------------------------------")
+            print(" Image Splitting")
+            print("------------------------------------------------------------")
+            print()
+            
+            st.write("The Total of Images       =",len(dot1))
+            st.write("The Total of Train Images =",len(x_train))
+            st.write("The Total of Test Images  =",len(x_test))
           
           
               
@@ -1166,3 +1302,151 @@ def show_prediction():
     _dir = os.path.dirname(os.path.abspath(__file__))
     runpy.run_path(os.path.join(_dir, 'Prediction.py'),
                    init_globals={'__name__': 'prediction_runner'})
+
+
+if selected == "Project Chat Assistant":
+    st.markdown(
+        "<h2 style='color:#00C9FF;text-align:center;text-shadow: 1px 1px 3px rgba(0,0,0,0.5);'>"
+        "Dry Eye Project Chatbot</h2>",
+        unsafe_allow_html=True,
+    )
+    html_code = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dry Eye Project Assistant</title>
+  <link
+    href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.3/dist/tailwind.min.css"
+    rel="stylesheet"
+  />
+</head>
+<body class="bg-blue-100 flex flex-col min-h-screen">
+  <div class="flex-grow container mx-auto py-4 px-2">
+    <div class="h-full w-full max-w-2xl mx-auto">
+      <div id="chatbox" class="flex flex-col items-start overflow-y-auto h-96 p-1 rounded"></div>
+    </div>
+  </div>
+  <div class="w-full">
+    <div class="flex justify-center">
+      <div class="px-2 w-full max-w-2xl">
+        <div class="flex flex-col my-2">
+          <input
+            class="shadow flex-grow rounded p-2 mb-2 shadow appearance-none border rounded w-full  text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+            id="messageInput"
+            type="text"
+            placeholder="Ask something about this Dry Eye project"
+          />
+          <div class="flex justify-between space-x-2">
+            <button
+              class="bg-red-500 hover:bg-red-400 text-white font-bold py-2 px-4 border-b-4 border-red-700 hover:border-red-500 rounded w-full sm:w-auto"
+              id="clearButton"
+            >
+              Clear Chat
+            </button>
+            <button
+              class="bg-blue-500 hover:bg-blue-400 text-white font-bold py-2 px-4 border-b-4 border-blue-700 hover:border-blue-500 rounded w-full sm:w-auto"
+              id="sendButton"
+            >
+              Ask Assistant
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    const chatbox = document.getElementById("chatbox");
+    const messageInput = document.getElementById("messageInput");
+    const sendButton = document.getElementById("sendButton");
+    const clearButton = document.getElementById("clearButton");
+    const chatId = self.crypto ? self.crypto.randomUUID() : Math.random().toString(36).slice(2);
+    let websocket = null;
+
+    let receiving = false;
+    const systemPrompt = "You are an AI assistant that explains and clarifies doubts about a Dry Eye Disease project. The project has: (1) Dry Eye Prediction using an MLP on questionnaire data, (2) Eye Disease Prediction from images using GLCM texture features and a MobileNet CNN, and (3) Eye Blink Detection using GLCM and a VGG19-based CNN. Answer clearly and briefly, in simple language.";
+
+    function createMessageElement(text, alignment) {
+      const messageElement = document.createElement("div");
+      messageElement.className = "inline-block my-2.5 p-2.5 rounded border " +
+        (alignment === "left" ? "self-start bg-white" : "self-end bg-blue-200");
+      messageElement.textContent = text;
+      return messageElement;
+    }
+
+    function connectWebSocket(message, initChat) {
+      receiving = true;
+      sendButton.textContent = "Cancel";
+      const url = "wss://backend.buildpicoapps.com/api/chatbot/chat";
+      websocket = new WebSocket(url);
+
+      websocket.addEventListener("open", () => {
+        websocket.send(
+          JSON.stringify({
+            chatId: chatId,
+            appId: "road-traditional",
+            systemPrompt: systemPrompt,
+            message: initChat ? "Give a very short welcome message as the Dry Eye Project Assistant." : message,
+          })
+        );
+      });
+
+      const messageElement = createMessageElement("", "left");
+      chatbox.appendChild(messageElement);
+
+      websocket.onmessage = (event) => {
+        messageElement.textContent += event.data;
+        chatbox.scrollTop = chatbox.scrollHeight;
+      };
+
+      websocket.onclose = (event) => {
+        if (event.code === 1000) {
+          receiving = false;
+          sendButton.textContent = "Ask Assistant";
+        } else {
+          messageElement.textContent += " Error getting response from server. Refresh the page and try again.";
+          chatbox.scrollTop = chatbox.scrollHeight;
+          receiving = false;
+          sendButton.textContent = "Ask Assistant";
+        }
+      };
+    }
+
+    function createWelcomeMessage() {
+      connectWebSocket("", true);
+    }
+
+    sendButton.addEventListener("click", () => {
+      if (!receiving && messageInput.value.trim() !== "") {
+        const messageText = messageInput.value.trim();
+        messageInput.value = "";
+        const messageElement = createMessageElement(messageText, "right");
+        chatbox.appendChild(messageElement);
+        chatbox.scrollTop = chatbox.scrollHeight;
+
+        connectWebSocket(messageText, false);
+      } else if (receiving && websocket) {
+        websocket.close(1000);
+        receiving = false;
+        sendButton.textContent = "Ask Assistant";
+      }
+    });
+
+    messageInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && !receiving && messageInput.value.trim() !== "") {
+        event.preventDefault();
+        sendButton.click();
+      }
+    });
+
+    clearButton.addEventListener("click", () => {
+      chatbox.innerHTML = "";
+    });
+
+    createWelcomeMessage();
+  </script>
+</body>
+</html>
+"""
+    components.html(html_code, height=550, scrolling=True)
