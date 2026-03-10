@@ -2,7 +2,6 @@
 
 import numpy as np
 import matplotlib.pyplot as plt 
-from tkinter.filedialog import askopenfilename
 from tensorflow.keras.models import Sequential
 import matplotlib.image as mpimg
 import cv2
