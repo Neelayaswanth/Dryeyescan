@@ -1041,10 +1041,13 @@ if selected == 'Eye Blink Detection':
         
         PATCH_SIZE = 21
         
-        # open the image
-        
-        image = img[:,:,0]
-        image = cv2.resize(image,(768,1024))
+        # open the image – handle both RGB and grayscale safely
+        if img.ndim == 3:
+            image = img[:, :, 0]
+        else:
+            image = img
+
+        image = cv2.resize(image, (768, 1024))
          
         grass_locations = [(280, 454), (342, 223), (444, 192), (455, 455)]
         grass_patches = []
