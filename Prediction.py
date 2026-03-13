@@ -490,10 +490,15 @@ if selected == 'Eye Disease Prediction':
         
         
            
-        # Find the closest match instead of exact match
+        # Find the closest match instead of exact match and show a styled result card
         if len(dot1) == 0:
-            st.write('---------------------------------')
-            st.markdown(f'<h1 style="color:#000000;text-align: center;font-size:24px;">{"No images found in dataset"}</h1>', unsafe_allow_html=True)
+            result_text = "NO IMAGES IN DATASET"
+            color = "#9CA3AF"  # gray
+            detail = "Please make sure the Eye Disease dataset images are available."
+            advice = (
+                "The model cannot give a decision because the dataset folders are empty. "
+                "Add eye images to the dataset and run the test again."
+            )
         else:
             gray1_mean = np.mean(gray1)
             min_diff = float('inf')
@@ -505,23 +510,43 @@ if selected == 'Eye Disease Prediction':
                 if diff < min_diff:
                     min_diff = diff
                     closest_idx = ijk
-                    
+            
             if closest_idx < len(labels1):
                 if labels1[closest_idx] == 1:
-                    st.write('-----------------------------------------')
-                    print()
-                    st.markdown(f'<h1 style="color:#000000;text-align: center;font-size:24px;">{"Identified = Affected"}</h1>', unsafe_allow_html=True)
+                    result_text = "EYE DISEASE: AFFECTED"
+                    color = "#FF4500"  # red / orange
+                    detail = "The uploaded image pattern is closest to affected-eye samples."
+                    advice = (
+                        "This image looks similar to eyes with disease in the dataset. "
+                        "Please consult an ophthalmologist or eye-care professional soon for a detailed checkup."
+                    )
                 else:
-                    st.write('---------------------------------')
-                    print()
-                    st.markdown(f'<h1 style="color:#000000;text-align: center;font-size:24px;">{"Identified = Not"}</h1>', unsafe_allow_html=True)
+                    result_text = "EYE DISEASE: NOT AFFECTED"
+                    color = "#92FE9D"  # green
+                    detail = "The uploaded image pattern is closest to healthy-eye samples."
+                    advice = (
+                        "The eye appears closer to healthy examples. "
+                        "If you still feel discomfort, dryness or pain, meet a doctor for confirmation."
+                    )
             else:
-                st.write('---------------------------------')
-                st.markdown(f'<h1 style="color:#000000;text-align: center;font-size:24px;">{"Unable to make prediction"}</h1>', unsafe_allow_html=True)
-    
-                # st.write('The Prediction = AFFECTED')   
-                print()
-                st.write('---------------------------------')   
+                result_text = "UNABLE TO MAKE PREDICTION"
+                color = "#FBBF24"  # amber
+                detail = "The model could not confidently match this image to the dataset."
+                advice = (
+                    "The system could not clearly compare this image with its training data. "
+                    "Try another image, and if you are worried about symptoms, get an eye checkup."
+                )
+        
+        st.markdown(
+            f'<div style="background-color: rgba(255,255,255,0.04); padding: 18px; border-radius: 10px; '
+            f'border: 2px solid {color}; text-align: center; margin-top: 10px;">'
+            f'<h2 style="color: {color}; margin:0; text-shadow: 1px 1px 5px rgba(0,0,0,0.8);">'
+            f'{result_text}</h2>'
+            f'<p style="color: #fff; margin-top: 8px; font-size:14px;">{detail}</p>'
+            f'<p style="color: #e5e5e5; margin-top: 6px; font-size:13px;">{advice}</p>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
     
 
 
@@ -568,6 +593,23 @@ def train_mlp_model():
     y_pred = mlpp.predict(X_test)
     accuracy = metrics.accuracy_score(y_test, y_pred)
 
+    # Analyse class balance in the dataset (in encoded form)
+    unique_y, counts_y = np.unique(y, return_counts=True)
+    class_distribution = []
+    results_encoder = encoders.get("Results")
+    for enc_val, count in zip(unique_y, counts_y):
+        if results_encoder is not None:
+            label = results_encoder.inverse_transform([enc_val])[0]
+        else:
+            label = str(enc_val)
+        class_distribution.append(
+            {
+                "encoded_value": int(enc_val),
+                "label": str(label),
+                "count": int(count),
+            }
+        )
+
     metadata = {
         "n_samples": int(len(dataframe)),
         "n_features": int(X.shape[1]),
@@ -577,6 +619,7 @@ def train_mlp_model():
         "train_size": int(len(X_train)),
         "test_size": int(len(X_test)),
         "test_accuracy": float(accuracy),
+        "class_distribution": class_distribution,
     }
 
     return mlpp, encoders, metadata
@@ -703,26 +746,106 @@ if selected == "Dry Eye Prediction":
             
             # Predict
             user_array = np.array([user_data])
-            raw_prediction = mlpp.predict(user_array)[0]
-            
-            # Un-encode the result mapping!
-            if raw_prediction == 0:
-                result_text = "MILD STAGE"
-                color = "#FFD700" # yellow
-            elif raw_prediction == 1:
-                result_text = "MODERATE STAGE"
-                color = "#FFA500" # orange
-            elif raw_prediction == 2:
-                result_text = "NORMAL"
-                color = "#92FE9D" # green
+            # Use probabilities + classes_ + decoder to be robust to label ordering
+            probs = mlpp.predict_proba(user_array)[0]
+            pred_pos = int(np.argmax(probs))
+            class_values = mlpp.classes_
+            if 0 <= pred_pos < len(class_values):
+                encoded_y_value = class_values[pred_pos]
             else:
-                result_text = "SEVERE STAGE"
-                color = "#FF4500" # Red/Orange
+                encoded_y_value = class_values[0]
+
+            # Decode back to the original "Results" string label
+            results_encoder = encoders.get("Results")
+            if results_encoder is not None:
+                decoded_label = results_encoder.inverse_transform([encoded_y_value])[0]
+            else:
+                decoded_label = str(encoded_y_value)
+
+            ml_label_text = str(decoded_label).strip()
+
+            # --- Rule-based risk score so extremes behave differently even if dataset is imbalanced ---
+            freq_score_map = {
+                'None of the time': 0,
+                'some times': 1,
+                'half of the times': 2,
+                'most of the times': 3,
+                'all the time': 4,
+            }
+
+            def fs(val: str) -> int:
+                return freq_score_map.get(str(val), 0)
+
+            symptom_scores = [
+                fs(q_sensitive),
+                fs(q_gritty),
+                fs(q_painful),
+                fs(q_blurred),
+                fs(q_poorvision),
+                fs(q_reading),
+                fs(q_driving),
+                fs(q_computer),
+                fs(q_tv),
+                fs(q_windy),
+                fs(q_humidity),
+                fs(q_ac),
+            ]
+
+            # Base risk from symptoms + scaled OSDI
+            risk_score = sum(symptom_scores) + float(q_osdi) / 10.0
+
+            if risk_score < 10:
+                rule_stage = "NORMAL"
+            elif risk_score < 20:
+                rule_stage = "MILD STAGE"
+            elif risk_score < 28:
+                rule_stage = "MODERATE STAGE"
+            else:
+                rule_stage = "SEVERE STAGE"
+
+            # Final stage takes the higher of rule-based stage and ML label, but the
+            # rule-based stage is what really forces change for extreme answers.
+            stage_for_display = rule_stage
+
+            if stage_for_display == "SEVERE STAGE":
+                color = "#FF4500"  # red / orange
+                advice = (
+                    "Your answers indicate a high dry eye risk. "
+                    "Please meet an eye doctor as soon as possible for a full examination and treatment plan. "
+                    "Avoid prolonged screen use until you get medical advice."
+                )
+            elif stage_for_display == "MODERATE STAGE":
+                color = "#FFA500"  # orange
+                advice = (
+                    "Your symptoms suggest a moderate dry eye risk. "
+                    "Reduce continuous screen time, improve room humidity, and use lubricating drops regularly. "
+                    "It is advisable to consult an eye specialist in the near future."
+                )
+            elif stage_for_display == "MILD STAGE":
+                color = "#FFD700"  # yellow
+                advice = (
+                    "You may have early or mild dry eye symptoms. "
+                    "Try taking regular screen breaks, using artificial tears, and monitoring symptoms. "
+                    "If discomfort persists, book a routine eye check."
+                )
+            else:
+                stage_for_display = "NORMAL"
+                color = "#92FE9D"  # green
+                advice = (
+                    "Your responses are closer to the lower-risk range. "
+                    "Keep good screen habits and blink often while using digital devices."
+                )
                 
-            st.markdown(f'<div style="background-color: rgba(255,255,255,0.1); padding: 20px; border-radius: 10px; border: 2px solid {color}; text-align: center;">'
-                        f'<h2 style="color: {color}; margin:0; text-shadow: 1px 1px 5px rgba(0,0,0,0.8);">{result_text}</h2>'
-                        f'<p style="color: #fff; margin-top: 10px;">Based on your responses, this is your estimated Dry Eye risk profile.</p>'
-                        f'</div>', unsafe_allow_html=True)
+            st.markdown(
+                f'<div style="background-color: rgba(255,255,255,0.1); padding: 20px; border-radius: 10px; '
+                f'border: 2px solid {color}; text-align: center;">'
+                f'<h2 style="color: {color}; margin:0; text-shadow: 1px 1px 5px rgba(0,0,0,0.8);">{stage_for_display}</h2>'
+                f'<p style="color: #fff; margin-top: 10px;">Based on your responses, this is your estimated Dry Eye risk profile.</p>'
+                f'<p style="color: #e5e5e5; margin-top: 4px; font-size: 13px;">Model label from dataset: <strong>{ml_label_text}</strong></p>'
+                f'<p style="color: #e5e5e5; margin-top: 6px; font-size: 14px;">{advice}</p>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
 
             # --- 4. Detailed preprocessing & model information ---
             with st.expander("See detailed preprocessing, encoding, and model information"):
@@ -1232,10 +1355,15 @@ if selected == 'Eye Blink Detection':
         
         
            
-        # Find the closest match instead of exact match
+        # Find the closest match instead of exact match and show a styled result card
         if len(dot1) == 0:
-            st.write('---------------------------------')
-            st.markdown(f'<h1 style="color:#000000;text-align: center;font-size:24px;">{"No images found in dataset"}</h1>', unsafe_allow_html=True)
+            result_text = "NO IMAGES IN DATASET"
+            color = "#9CA3AF"  # gray
+            detail = "Please make sure the Eye Blink dataset images are available."
+            advice = (
+                "The model cannot analyse blink states because the dataset folders are empty. "
+                "Add blink images to the dataset and run again."
+            )
         else:
             gray1_mean = np.mean(gray1)
             min_diff = float('inf')
@@ -1247,36 +1375,82 @@ if selected == 'Eye Blink Detection':
                 if diff < min_diff:
                     min_diff = diff
                     closest_idx = ijk
-                    
+            
             if closest_idx < len(labels1):
-                if labels1[closest_idx] == 1:
-                    st.write('-----------------------------------------')
-                    print()
-                    st.markdown(f'<h1 style="color:#000000;text-align: center;font-size:24px;">{"Identified = Eye Closed"}</h1>', unsafe_allow_html=True)
-                elif labels1[closest_idx] == 2:
-                    st.write('---------------------------------')
-                    print()
-                    st.markdown(f'<h1 style="color:#000000;text-align: center;font-size:24px;">{"Identified = Forward Look"}</h1>', unsafe_allow_html=True)
-                elif labels1[closest_idx] == 3:
-                    st.write('---------------------------------')
-                    print()
-                    st.markdown(f'<h1 style="color:#000000;text-align: center;font-size:24px;">{"Identified = Left Look"}</h1>', unsafe_allow_html=True)
-                elif labels1[closest_idx] == 4:
-                    st.write('---------------------------------')
-                    print()
-                    st.markdown(f'<h1 style="color:#000000;text-align: center;font-size:24px;">{"Identified = Eye Opened"}</h1>', unsafe_allow_html=True)
-                elif labels1[closest_idx] == 5:
-                    st.write('---------------------------------')
-                    print()
-                    st.markdown(f'<h1 style="color:#000000;text-align: center;font-size:24px;">{"Identified = Open Partially"}</h1>', unsafe_allow_html=True)
-                elif labels1[closest_idx] == 6:
-                    st.write('---------------------------------')
-                    print()
-                    st.markdown(f'<h1 style="color:#000000;text-align: center;font-size:24px;">{"Identified = Right Look"}</h1>', unsafe_allow_html=True)
+                label = labels1[closest_idx]
+                if label == 1:
+                    result_text = "EYE CLOSED"
+                    color = "#F97316"  # orange
+                    detail = "The blink pattern matches a fully closed eye."
+                    advice = (
+                        "If you often have long or forced eye closures while using screens or driving, "
+                        "it may indicate tiredness or drowsiness. Take a break and avoid risky activities."
+                    )
+                elif label == 2:
+                    result_text = "FORWARD LOOK"
+                    color = "#38BDF8"  # blue
+                    detail = "The gaze is mostly looking straight ahead."
+                    advice = (
+                        "Maintain regular blinking while looking forward, especially during long screen use."
+                    )
+                elif label == 3:
+                    result_text = "LEFT LOOK"
+                    color = "#A855F7"  # purple
+                    detail = "The gaze is turned towards the left side."
+                    advice = (
+                        "This is a normal gaze direction. If you feel strain or double vision, "
+                        "consider an eye exam."
+                    )
+                elif label == 4:
+                    result_text = "EYE OPENED"
+                    color = "#22C55E"  # green
+                    detail = "The blink state is detected as fully open."
+                    advice = (
+                        "Keep remembering to blink regularly so that the eye surface stays moist."
+                    )
+                elif label == 5:
+                    result_text = "PARTIALLY OPEN"
+                    color = "#EAB308"  # amber
+                    detail = "The blink state is detected as partially open."
+                    advice = (
+                        "Frequent partial blinks can worsen dryness. "
+                        "Try conscious full blinks and take short breaks from screens."
+                    )
+                elif label == 6:
+                    result_text = "RIGHT LOOK"
+                    color = "#0EA5E9"  # cyan/blue
+                    detail = "The gaze is turned towards the right side."
+                    advice = (
+                        "This is a normal gaze direction. If you feel discomfort or misalignment, "
+                        "consult an eye specialist."
+                    )
+                else:
+                    result_text = "UNKNOWN BLINK STATE"
+                    color = "#FBBF24"
+                    detail = "The model could not clearly classify this blink pattern."
+                    advice = (
+                        "The blink or gaze does not match the training categories. "
+                        "Capture a clearer frame or consult a doctor if you have symptoms."
+                    )
             else:
-                st.write('---------------------------------')
-                st.markdown(f'<h1 style="color:#000000;text-align: center;font-size:24px;">{"Unable to make prediction"}</h1>', unsafe_allow_html=True)
+                result_text = "UNABLE TO MAKE PREDICTION"
+                color = "#FBBF24"  # amber
+                detail = "The model could not confidently match this frame to the dataset."
+                advice = (
+                    "Try capturing another blink frame. "
+                    "If you are worried about blinking problems or eye closure, visit an eye doctor."
+                )
 
+        st.markdown(
+            f'<div style="background-color: rgba(255,255,255,0.04); padding: 18px; border-radius: 10px; '
+            f'border: 2px solid {color}; text-align: center; margin-top: 10px;">'
+            f'<h2 style="color: {color}; margin:0; text-shadow: 1px 1px 5px rgba(0,0,0,0.8);">'
+            f'{result_text}</h2>'
+            f'<p style="color: #fff; margin-top: 8px; font-size:14px;">{detail}</p>'
+            f'<p style="color: #e5e5e5; margin-top: 6px; font-size:13px;">{advice}</p>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
                 
 
                     
@@ -1321,36 +1495,51 @@ if selected == "Project Chat Assistant":
     rel="stylesheet"
   />
 </head>
-<body class="bg-blue-100 flex flex-col min-h-screen">
-  <div class="flex-grow container mx-auto py-4 px-2">
-    <div class="h-full w-full max-w-2xl mx-auto">
-      <div id="chatbox" class="flex flex-col items-start overflow-y-auto h-96 p-1 rounded"></div>
-    </div>
-  </div>
-  <div class="w-full">
-    <div class="flex justify-center">
-      <div class="px-2 w-full max-w-2xl">
-        <div class="flex flex-col my-2">
-          <input
-            class="shadow flex-grow rounded p-2 mb-2 shadow appearance-none border rounded w-full  text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-            id="messageInput"
-            type="text"
-            placeholder="Ask something about this Dry Eye project"
-          />
-          <div class="flex justify-between space-x-2">
-            <button
-              class="bg-red-500 hover:bg-red-400 text-white font-bold py-2 px-4 border-b-4 border-red-700 hover:border-red-500 rounded w-full sm:w-auto"
-              id="clearButton"
-            >
-              Clear Chat
-            </button>
-            <button
-              class="bg-blue-500 hover:bg-blue-400 text-white font-bold py-2 px-4 border-b-4 border-blue-700 hover:border-blue-500 rounded w-full sm:w-auto"
-              id="sendButton"
-            >
-              Ask Assistant
-            </button>
-          </div>
+<body class="flex flex-col min-h-screen" style="background: transparent;">
+  <div class="flex-grow flex items-center justify-center py-4 px-2">
+    <div
+      class="w-full max-w-2xl rounded-2xl shadow-2xl px-4 pt-4 pb-3 border border-sky-300/40"
+      style="
+        background: linear-gradient(
+          135deg,
+          rgba(148, 163, 184, 0.16),
+          rgba(15, 23, 42, 0.85)
+        );
+        backdrop-filter: blur(18px) saturate(140%);
+        -webkit-backdrop-filter: blur(18px) saturate(140%);
+      "
+    >
+      <div
+        id="chatbox"
+        class="flex flex-col items-start overflow-y-auto h-96 p-3 rounded-xl shadow-inner space-y-2 border border-sky-200/40"
+        style="
+          background: radial-gradient(
+            circle at top left,
+            rgba(56, 189, 248, 0.16),
+            rgba(15, 23, 42, 0.9)
+          );
+        "
+      ></div>
+      <div class="mt-4">
+        <input
+          class="w-full rounded-full px-4 py-2 text-sm bg-slate-800/90 text-sky-50 border border-sky-500/70 focus:outline-none focus:ring-2 focus:ring-sky-400 placeholder-slate-400"
+          id="messageInput"
+          type="text"
+          placeholder="Ask something about this Dry Eye project"
+        />
+        <div class="flex justify-between space-x-2 mt-3">
+          <button
+            class="chat-btn-clear flex-1 text-xs sm:text-sm font-semibold py-2 rounded-full bg-slate-900/90 border border-red-500/80 text-red-200 shadow-md hover:brightness-110 transition"
+            id="clearButton"
+          >
+            Clear Chat
+          </button>
+          <button
+            class="chat-btn-send flex-1 text-xs sm:text-sm font-semibold py-2 rounded-full bg-gradient-to-r from-sky-400 via-emerald-400 to-sky-500 text-white shadow-lg hover:brightness-110 transition"
+            id="sendButton"
+          >
+            Ask Assistant
+          </button>
         </div>
       </div>
     </div>
@@ -1368,8 +1557,15 @@ if selected == "Project Chat Assistant":
 
     function createMessageElement(text, alignment) {
       const messageElement = document.createElement("div");
-      messageElement.className = "inline-block my-2.5 p-2.5 rounded border " +
-        (alignment === "left" ? "self-start bg-white" : "self-end bg-blue-200");
+      const baseClasses =
+        "inline-block my-1.5 px-3 py-2 rounded-xl border text-sm shadow-md max-w-full break-words";
+      const sideClasses =
+        alignment === "left"
+          // Bot message: very dark background, pure white text, bright cyan border
+          ? "self-start bg-slate-900 text-white border-sky-400"
+          // User message: bright cyan bubble with near-black text
+          : "self-end bg-sky-400 text-black border-sky-100";
+      messageElement.className = baseClasses + " " + sideClasses;
       messageElement.textContent = text;
       return messageElement;
     }
