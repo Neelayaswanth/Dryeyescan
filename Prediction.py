@@ -40,6 +40,13 @@ def add_custom_bg():
         background-attachment: fixed;
         color: #e0e0e0;
     }
+
+    /* Constrain main content width for all sections */
+    .main > div {
+        max-width: 900px;
+        margin-left: auto;
+        margin-right: auto;
+    }
     .stTextInput>div>div>input {
         background-color: rgba(255, 255, 255, 0.1) !important;
         color: white !important;
@@ -95,7 +102,19 @@ selected = option_menu(
     options=["Dry Eye Prediction", "Eye Disease Prediction", "Eye Blink Detection", "Project Chat Assistant"],  
     orientation="horizontal",
     styles={
-        "container": {"padding": "5px!important", "background-color": "rgba(255,255,255,0.05)", "border-radius": "10px", "border": "1px solid rgba(255,255,255,0.1)", "margin-bottom": "20px", "display": "grid", "grid-template-columns": "repeat(4, 1fr)", "gap": "5px"},
+        "container": {
+            "padding": "5px!important",
+            "background-color": "rgba(255,255,255,0.05)",
+            "border-radius": "10px",
+            "border": "1px solid rgba(255,255,255,0.1)",
+            "margin-bottom": "20px",
+            "display": "grid",
+            "grid-template-columns": "repeat(4, minmax(0, 1fr))",
+            "gap": "5px",
+            "max-width": "900px",
+            "margin-left": "auto",
+            "margin-right": "auto"
+        },
         "icon": {"color": "#00C9FF", "font-size": "18px"}, 
         "nav-link": {"font-size": "16px", "text-align": "center", "margin": "0", "--hover-color": "rgba(255,255,255,0.1)", "color": "#e0e0e0", "transition": "0.3s", "white-space": "nowrap", "width": "100%", "padding": "10px 0"},
         "nav-link-selected": {"background": "linear-gradient(90deg, #00C9FF 0%, #92FE9D 100%)", "color": "#111", "font-weight": "bold", "box-shadow": "0 4px 15px rgba(0, 201, 255, 0.4)", "white-space": "nowrap", "width": "100%", "padding": "10px 0"},
@@ -641,8 +660,13 @@ if selected == "Dry Eye Prediction":
     from sklearn import preprocessing
     from sklearn.neural_network import MLPClassifier
 
-    st.markdown(f'<h1 style="color:#00C9FF;text-align: center;font-size:32px;text-shadow: 2px 2px 5px rgba(0,0,0,0.5);">{"Interactive Dry Eye Scan"}</h1>', unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: #ccc; margin-bottom: 30px;'>Please answer the following questionnaire to immediately assess your Dry Eye Risk.</p>", unsafe_allow_html=True)
+    st.markdown(
+        "<div style='max-width: 900px; margin: 0 auto;'>"
+        "<h1 style='color:#00C9FF;text-align: center;font-size:32px;text-shadow: 2px 2px 5px rgba(0,0,0,0.5);'>Interactive Dry Eye Scan</h1>"
+        "<p style='text-align: center; color: #ccc; margin-bottom: 30px;'>Please answer the following questionnaire to immediately assess your Dry Eye Risk.</p>"
+        "</div>",
+        unsafe_allow_html=True,
+    )
 
     # --- 1. Background Model Training (cached for speed) ---
     feature_order = [
