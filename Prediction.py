@@ -16,16 +16,6 @@ from PIL import Image
 import matplotlib.image as mpimg
 
 
-#------------------------ PAGE CONFIG & FAVICON ------------------------
-favicon_path = os.path.join(os.path.dirname(__file__), "a4644549-5dcd-52fe-8cdf-2733b3e03417.jpg")
-try:
-    favicon_img = Image.open(favicon_path)
-    st.set_page_config(page_title="Dry Eye Scan", page_icon=favicon_img, layout="wide")
-except Exception:
-    # Fallback if image is missing or cannot be opened
-    st.set_page_config(page_title="Dry Eye Scan", page_icon="👁️", layout="wide")
-
-
 #======================== BACK GROUND IMAGE ===========================
 
 
